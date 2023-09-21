@@ -1,0 +1,17 @@
+Based on the information I have given you, please create a list of the top 5 business priorities for {{$companyName}} executive {{$execName}}. Also return up to 2 references linkgs.
+Do not generate any additional information or make assumptions beyond what I have provided.
+
+Return the entire result only in well-formatted JSON as per example:
+{
+  "name" : "{{$execName}}",
+  "priorities": [
+    "priority1",
+    "priority2"
+  ],
+  "references": [
+	"url1",
+	"url2"
+  ]
+}
++++++
+{{$personInfo}}

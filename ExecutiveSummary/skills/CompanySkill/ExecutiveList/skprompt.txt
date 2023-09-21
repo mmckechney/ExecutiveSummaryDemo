@@ -1,0 +1,21 @@
+Based on the information I have given you, please provide a list the executives including their name, title and company name. 
+Do not generate any additional information or make assumptions beyond what I have provided.
+
+Respond in well-formatted JSON:
+[
+	{
+	  "name" :"persons name",
+	  "title" : "business title",
+	  "companyname" :"name of company"
+	},
+	{
+	  "name" :"persons name",
+	  "title" : "business title",
+	  "companyname" :"name of company"
+	}
+]
++++++
+{{$INPUT}}
++++++
+
+

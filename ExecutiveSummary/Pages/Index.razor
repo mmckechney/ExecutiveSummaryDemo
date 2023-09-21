@@ -1,0 +1,292 @@
+﻿@page "/"
+@attribute [Authorize]
+@inject NavigationManager navManager
+@inject Apis.AzureOpenAI azureOpenAI
+@inject ProtectedSessionStorage ProtectedSessionStore
+@using ExecutiveSummary.Model;
+@using ExecutiveSummary;
+
+
+<PageTitle>Index</PageTitle>
+
+<h1>Executive Summary Meeting Prep</h1>
+
+
+<div>
+    To get started, please enter the company name or URL containing executive information:
+    <InputText DisplayName="Company Name" @bind-Value="companyName" @onkeyup="CheckSubmit"/> <button @onclick="GetExecutives" class="btn btn-primary fa-align-center">Go</button>
+</div>
+
+
+<h4 hidden="@hideRetrievingLabel">Retrieving '@companyName'' Executive List...<div class="spinner-border text-primary" role="status"></div></h4>
+
+
+
+    <div id="ExecutiveTable" hidden="@hideExecTable">
+        <hr />
+    <p hidden="@hideRetrieveButton">Select executives:</p>
+    <table class="table table-striped ">
+        <thead class="thead-dark">
+                <tr>
+                    <th></th>
+                    <th>Name</th>
+                    <th>Title</th>
+                </tr>
+        </thead>
+        <tbody>
+            @foreach (var exec in executives)
+            {
+                <tr>
+                    <td>
+                        <InputCheckbox DisplayName="Name" @bind-Value=exec.Selected />
+                    </td>
+                    <td>@exec.Name</td>
+                    <td>@exec.Title</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    <div>Source: @executiveSource.AddLinksAndTitles()</div>
+        
+    </div>
+<div hidden="@hideRetrieveButton">
+<div>
+        Add a meeting topic to search for relevant news articles:
+    <InputText DisplayName="MeetingTopic" @bind-Value="meetingTopic" @onkeyup="CheckSubmit" /> 
+</div>
+<div>
+<button @onclick=GetCompanyAndExecInfo  class="btn btn-primary fa-align-center">Generate Meeting Prep Notes</button>
+    </div>
+</div>
+<h4 hidden="@hidePreparingMessage">
+    <hr />
+    Preparing Information... @generateStatus
+    <div class="spinner-border text-primary" role="status"></div>
+ </h4>
+
+<div hidden="@hidePrepSection">
+    <br />
+    <h2 class="alert alert-secondary" role="alert">Executive Information</h2>
+    @foreach (var exec in executives)
+    {
+        <h3>@exec.Name</h3>
+        <div>@exec.Bio.AddLinksAndTitles()</div>
+        <div><b>Business Priorities</b></div>
+        <ul>
+            @{exec.Priorities = exec.Priorities.Distinct().ToList();}
+            @foreach(var p in exec.Priorities)
+            {
+                <li>@p.WithLinks()</li>
+            }
+        </ul>
+        <div><b>References</b></div>
+        <ul>
+            @{
+                exec.References = exec.References.Distinct().ToList();
+            }
+            @foreach (var r in exec.References)
+            {
+                <li>@r.WithLinks()</li>
+            }
+        </ul>
+        <hr />
+    }
+
+    <h2 class="alert alert-secondary" role="alert">Quarterly Report Insights</h2>
+    <div>@quarterlySummary.AddLinksAndTitles()</div>
+       
+
+@*    <h2 class="alert alert-secondary" role="alert">10K Insights</h2>
+    <div> @insights10K.AddLinksAndTitles()</div>*@
+
+    @if(articles.Count > 0 && articles[0].Url != string.Empty)
+    {
+        <h2 class="alert alert-secondary" role="alert">Article Insights</h2>
+        @foreach(var article in articles)
+        {
+           <div> @article.Summary.AddLinksAndTitles()</div>
+           <div>@article.Url.AddLinksAndTitles()</div>
+           <hr/>
+        }
+    }
+
+</div>
+
+
+@code {
+
+    [Parameter]
+    public string companyName { get; set; } = string.Empty;
+    [Parameter]
+    public string meetingTopic { get; set; } = string.Empty;
+
+    [Parameter]
+    public List<Article> articles { get; set; } = new List<Article>();
+
+    public List<Executive> executives { get; set; } = new List<Executive>();
+    public string executiveSource { get; set; } = string.Empty;
+    public string quarterlySummary { get; set; } = string.Empty;
+    public string insights10K { get; set; } = string.Empty;
+    public string generateStatus { get; set; } = string.Empty;
+
+
+    private bool hideExecTable { get; set; } = true;
+    private bool hideRetrievingLabel { get; set; } = true;
+    private bool hideRetrieveButton { get; set; } = true;
+    private bool hidePrepSection { get; set; } = true;
+    private bool hidePreparingMessage { get; set; } = true;
+
+    protected override void OnInitialized()
+    {
+        if (articles.Count == 0)
+        {
+            articles.Add(new Article());
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        try
+        {
+            var lastState = await ProtectedSessionStore.GetAsync<PageState>("lastpagestate");
+            if (lastState.Success)
+            {
+                SetPageState(lastState.Value);
+            }else
+            {
+                SetPageState(PageState.New);
+            }
+
+
+            var tmp = await ProtectedSessionStore.GetAsync<string>("company");
+            if (tmp.Success)
+            {
+                companyName = tmp.Value;
+            }
+            var exeTmp = await ProtectedSessionStore.GetAsync<List<Executive>>("executives");
+            if (exeTmp.Success)
+            {
+                executives = exeTmp.Value;
+            }
+
+            var urlTmp = await ProtectedSessionStore.GetAsync<List<Article>>("summaryurls");
+            if (urlTmp.Success)
+            {
+                articles = urlTmp.Value;
+            }
+        }
+        catch
+        {
+
+        }
+    }
+
+    private async Task CheckSubmit(KeyboardEventArgs e)
+    {
+        if (e.Code == "Enter" || e.Code == "NumpadEnter")
+        {
+            await GetExecutives();
+        }
+    }
+    private async Task GetExecutives()
+    {
+        SetPageState(PageState.RetrievingExecs);
+        (executives,executiveSource) = await azureOpenAI.GetCompanyExecutives(companyName);
+        if(companyName.IsUrl())
+        {
+            companyName = executives.First().CompanyName;
+        }
+        SetPageState(PageState.RetrievedExecs);
+
+        await ProtectedSessionStore.SetAsync("company", executives);
+        await ProtectedSessionStore.SetAsync("executives", executives);
+        await ProtectedSessionStore.SetAsync("summaryurls", articles);
+
+    }
+
+    private async Task GetCompanyAndExecInfo()
+    {
+        SetPageState(PageState.RetrievingSummary);
+        executives = executives.Where(e => e.Selected).ToList();
+        generateStatus = "Executive Bios and Priorities";
+        executives = await azureOpenAI.GetExecutiveBios(executives, companyName);
+        executives = executives.DistinctBy(n => n.Name).ToList();
+
+
+        generateStatus = "Insights from Quarterly Report ";
+        await InvokeAsync(StateHasChanged);
+        var tmp = await azureOpenAI.GetQuarterlyStatementSummary(companyName);
+        quarterlySummary = tmp;
+
+        //generateStatus = "10K Insights";
+        //await InvokeAsync(StateHasChanged);
+        //tmp = await azureOpenAI.Get10KInsights(companyName);
+        //insights10K = tmp;
+
+
+        if(!string.IsNullOrWhiteSpace(meetingTopic))
+        {
+            generateStatus = "Searching for Relevant News Articles";
+            await InvokeAsync(StateHasChanged);
+            articles = await azureOpenAI.GetMeetingTopicNews(companyName, meetingTopic);
+        }
+       
+        SetPageState(PageState.RetrievedSummary);
+    }
+
+    private async void SetPageState(PageState state)
+    {
+        switch (state)
+        {
+            case PageState.New:
+                hideExecTable = true;
+                hideRetrievingLabel = true;
+                hideRetrieveButton = true;
+                hidePrepSection = true;
+                hidePreparingMessage = true;
+                break;
+            case PageState.RetrievingExecs:
+                hideExecTable = true;
+                hideRetrievingLabel = false;
+                hideRetrieveButton = true;
+                hidePrepSection = true;
+                hidePreparingMessage = true;
+                break;
+            case PageState.RetrievedExecs:
+                hideExecTable = false;
+                hideRetrievingLabel = true;
+                hideRetrieveButton = false;
+                hidePrepSection = true;
+                hidePreparingMessage = true;
+                break;
+            case PageState.RetrievingSummary:
+                hideExecTable = false;
+                hideRetrievingLabel = true;
+                hideRetrieveButton = true;
+                hidePrepSection = true;
+                hidePreparingMessage = false;
+                break;
+            case PageState.RetrievedSummary:
+                hideExecTable = true;
+                hideRetrievingLabel = true;
+                hideRetrieveButton = true;
+                hidePrepSection = false;
+                hidePreparingMessage = true;
+                break;
+        }
+
+        await ProtectedSessionStore.SetAsync("lastpagestate", state);
+    }
+
+
+
+    private enum PageState
+    {
+        New,
+        RetrievingExecs,
+        RetrievedExecs,
+        RetrievingSummary,
+        RetrievedSummary
+    }
+
+}

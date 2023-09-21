@@ -1,0 +1,9 @@
+Get insights from this web page: {{$input}} in one or two paragraphs.
+
+Use this format:
+Title: Put the title here
+Article Insights:
+The insights goes here
+
+
++++++
