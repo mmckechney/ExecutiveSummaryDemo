@@ -1,5 +1,5 @@
 ﻿using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.SemanticKernel.Skills.Web;
+using Microsoft.SemanticKernel.Plugins.Web;
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -17,7 +17,7 @@ namespace ExecutiveSummary.Apis
             _logger = loggerFactory.CreateLogger<BingUrlConnector>();
             _config = config;
 
-            var apiKey = _config["Skills:BingApiKey"];
+            var apiKey = _config["Plugins:BingApiKey"];
             _logger = _logger ?? NullLogger<BingUrlConnector>.Instance;
             _httpClientHandler = new() { CheckCertificateRevocationList = true };
             _httpClient = new HttpClient(_httpClientHandler);

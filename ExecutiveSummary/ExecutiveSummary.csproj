@@ -8,75 +8,41 @@
 		<DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
 	</PropertyGroup>
 	<ItemGroup>
-		<PackageReference Include="HtmlAgilityPack" Version="1.11.46" />
-		<PackageReference Include="HtmlRenderer.Core.NetStandard2" Version="1.5.1.1" />
-		<PackageReference Include="Microsoft.Identity.Web" Version="2.11.1" />
-		<PackageReference Include="Microsoft.Identity.Web.UI" Version="2.11.1" />
-		<PackageReference Include="Microsoft.SemanticKernel" Version="0.15.230531.5-preview" />
-		<PackageReference Include="Microsoft.SemanticKernel.Connectors.Memory.AzureCognitiveSearch" Version="0.15.230531.5-preview" />
-		<PackageReference Include="Microsoft.SemanticKernel.Connectors.Memory.Qdrant" Version="0.15.230531.5-preview" />
-		<PackageReference Include="Microsoft.SemanticKernel.Connectors.Memory.Sqlite" Version="0.15.230531.5-preview" />
-		<PackageReference Include="Microsoft.SemanticKernel.Planning.ActionPlanner" Version="0.15.230531.5-preview" />
-		<PackageReference Include="Microsoft.SemanticKernel.Planning.SequentialPlanner" Version="0.15.230531.5-preview" />
-		<PackageReference Include="Microsoft.SemanticKernel.Skills.Document" Version="0.15.230531.5-preview" />
-		<PackageReference Include="Microsoft.SemanticKernel.Skills.Grpc" Version="0.15.230531.5-preview" />
-		<PackageReference Include="Microsoft.SemanticKernel.Skills.Memory.Sqlite" Version="0.10.72.1-preview" />
-		<PackageReference Include="Microsoft.SemanticKernel.Skills.MsGraph" Version="0.15.230531.5-preview" />
-		<PackageReference Include="Microsoft.SemanticKernel.Skills.OpenAPI" Version="0.15.230531.5-preview" />
-		<PackageReference Include="Microsoft.SemanticKernel.Skills.Web" Version="0.15.230531.5-preview" />
-		<PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.18.1" />
+		<PackageReference Include="HtmlAgilityPack" Version="1.11.54" />
+		<PackageReference Include="HtmlRenderer.Core.NetStandard2" Version="1.5.1.2" />
+		<PackageReference Include="Microsoft.Identity.Web" Version="2.15.2" />
+		<PackageReference Include="Microsoft.Identity.Web.UI" Version="2.15.2" />
+		<PackageReference Include="Microsoft.SemanticKernel" Version="1.0.0-beta2" />
+		<PackageReference Include="Microsoft.SemanticKernel.Abstractions" Version="1.0.0-beta2" />
+		<PackageReference Include="Microsoft.SemanticKernel.Connectors.Memory.AzureCognitiveSearch" Version="1.0.0-beta2" />
+		<PackageReference Include="Microsoft.SemanticKernel.Connectors.Memory.Postgres" Version="1.0.0-beta2" />
+		<PackageReference Include="Microsoft.SemanticKernel.Connectors.Memory.Qdrant" Version="1.0.0-beta2" />
+		<PackageReference Include="Microsoft.SemanticKernel.Connectors.Memory.Sqlite" Version="1.0.0-beta2" />
+		<PackageReference Include="Microsoft.SemanticKernel.Core" Version="1.0.0-beta2" />
+		<PackageReference Include="Microsoft.SemanticKernel.Functions.Semantic" Version="1.0.0-beta2" />
+		<PackageReference Include="Microsoft.SemanticKernel.Planners.Core" Version="1.0.0-beta2" />
+		<PackageReference Include="Microsoft.SemanticKernel.Plugins.Core" Version="1.0.0-beta2" />
+		<PackageReference Include="Microsoft.SemanticKernel.Plugins.Document" Version="1.0.0-beta2" />
+		<PackageReference Include="Microsoft.SemanticKernel.Plugins.Memory" Version="1.0.0-beta2" />
+		<PackageReference Include="Microsoft.SemanticKernel.Plugins.MsGraph" Version="1.0.0-beta2" />
+		<PackageReference Include="Microsoft.SemanticKernel.Plugins.Web" Version="1.0.0-beta2" />
+		<PackageReference Include="Microsoft.SemanticKernel.Reliability.Basic" Version="1.0.0-beta2" />
+		<PackageReference Include="Microsoft.SemanticKernel.Reliability.Polly" Version="1.0.0-beta2" />
+		<PackageReference Include="Microsoft.SemanticKernel.TemplateEngine.Basic" Version="1.0.0-beta2" />
+		<PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.19.5" />
 		<PackageReference Include="SecuritiesExchangeCommission.Edgar" Version="6.3.2" />
 	</ItemGroup>
 	<ItemGroup>
 		<Content Update="local.settings.json">
 			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
 		</Content>
-		<Content Update="skills\CompanySkill\10KSummary\config.json">
-		  <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-		</Content>
-		<Content Update="skills\CompanySkill\ExecutivePriorities\config.json">
-		  <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-		</Content>
-		<Content Update="skills\CompanySkill\NewsSummary\config.json">
-		  <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-		</Content>
-		<Content Update="skills\CompanySkill\QuarterlyResults\config.json">
-		  <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-		</Content>
-		<Content Update="skills\SummarizeSkill\SummarizeWeb\config.json">
-		  <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-		</Content>
+
 	</ItemGroup>
 	<ItemGroup>
-		<Content Include="skills\**\*.txt">
-			<Link>skills\%(RecursiveDir)%(FileName)%(Extension)</Link>
+		<Content Include="Plugins\**\*.txt">
+			<Link>Plugins\%(RecursiveDir)%(FileName)%(Extension)</Link>
 			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
 		</Content>
 	</ItemGroup>
-	<ItemGroup>
-	  <None Remove="skills\CompanySkill\10KSummary\skprompt.txt" />
-	  <None Remove="skills\CompanySkill\ExecutivePriorities\skprompt.txt" />
-	  <None Remove="skills\CompanySkill\NewsSummary\skprompt.txt" />
-	  <None Remove="skills\CompanySkill\QuarterlyResults\skprompt.txt" />
-	  <None Remove="skills\SummarizeSkill\SummarizeWeb\skprompt.txt" />
-	</ItemGroup>
-	<!--<ItemGroup>
-	  <ProjectReference Include="..\..\..\..\GitHub_Samples\semantic-kernel\dotnet\src\Connectors\Connectors.AI.OpenAI\Connectors.AI.OpenAI.csproj" />
-	  <ProjectReference Include="..\..\..\..\GitHub_Samples\semantic-kernel\dotnet\src\SemanticKernel.Abstractions\SemanticKernel.Abstractions.csproj" />
-	  <ProjectReference Include="..\..\..\..\GitHub_Samples\semantic-kernel\dotnet\src\SemanticKernel\SemanticKernel.csproj" />
-	  <ProjectReference Include="..\..\..\..\GitHub_Samples\semantic-kernel\dotnet\src\Skills\Skills.Document\Skills.Document.csproj" />
-	  <ProjectReference Include="..\..\..\..\GitHub_Samples\semantic-kernel\dotnet\src\Skills\Skills.OpenAPI\Skills.OpenAPI.csproj" />
-	  <ProjectReference Include="..\..\..\..\GitHub_Samples\semantic-kernel\dotnet\src\Skills\Skills.Web\Skills.Web.csproj" />
-	</ItemGroup>-->
-	<ItemGroup>
-	  <Content Update="skills\CompanySkill\10KSummary\skprompt.txt">
-	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-	  </Content>
-	  <Content Update="skills\CompanySkill\NewsSummary\skprompt.txt">
-	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-	  </Content>
-	  <Content Update="skills\CompanySkill\QuarterlyResults\skprompt.txt">
-	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-	  </Content>
-	</ItemGroup>
+
 </Project>

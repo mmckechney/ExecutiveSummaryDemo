@@ -1,10 +1,8 @@
 ﻿using ExecutiveSummary.Model;
 using HtmlAgilityPack;
+using Microsoft.SemanticKernel.Plugins.Web;
 using Microsoft.SemanticKernel;
-using Microsoft.SemanticKernel.CoreSkills;
 using Microsoft.SemanticKernel.Orchestration;
-using Microsoft.SemanticKernel.SkillDefinition;
-using Microsoft.SemanticKernel.Skills.Web;
 using Microsoft.SemanticKernel.Text;
 using System.Net;
 using System.Reflection;
@@ -25,14 +23,14 @@ namespace ExecutiveSummary.Apis
         public AzureOpenAI(BingUrlConnector bingConn, IConfiguration config, ILoggerFactory loggerFactory)
         {
             _config = config;
-            sk = new KernelBuilder().WithLogger(loggerFactory.CreateLogger<Kernel>()).Build();
+            sk = new KernelBuilder().WithLoggerFactory(loggerFactory).Build();
             log = loggerFactory.CreateLogger<AzureOpenAI>();
             this.bingConn = bingConn;
             this.loggerFactory = loggerFactory;
-            InitSkills();
+            InitPlugins();
         }
 
-        private bool InitSkills()
+        private bool InitPlugins()
         {
             HttpClientHandler handler = new HttpClientHandler()
             {
@@ -45,20 +43,20 @@ namespace ExecutiveSummary.Apis
             {
                 sk = new KernelBuilder()
                    .WithAzureChatCompletionService(azureOpenAIConfiguration.DeploymentName, azureOpenAIConfiguration.Endpoint, azureOpenAIConfiguration.ApiKey, true)
-                   .WithLogger(loggerFactory.CreateLogger<Kernel>()).Build();
+                    .WithLoggerFactory(loggerFactory).Build();
             }
 
-            var skillsDir = _config["Skills:Directory"];
-            if (skillsDir == null)
+            var pluginsDir = _config["Plugins:Directory"];
+            if (pluginsDir == null)
             {
                 string currentAssemblyDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-                skillsDir = Path.GetFullPath(Path.Combine(currentAssemblyDirectory, "skills"));
+                pluginsDir = Path.GetFullPath(Path.Combine(currentAssemblyDirectory, "Plugins"));
             }
 
-            sk.ImportSemanticSkillFromDirectory(skillsDir, "SummarizeSkill", "CompanySkill");
+            sk.ImportSemanticFunctionsFromDirectory(pluginsDir, "SummarizeFunctions", "CompanyFunctions");
 
-            WebSearchEngineSkill bing = new(bingConn);
-            sk.ImportSkill(bing, "WebSearchEngine");
+            WebSearchEnginePlugin bing = new(bingConn);
+            sk.ImportFunctions(bing, "WebSearchEngine");
 
             return true;
         }
@@ -82,10 +80,10 @@ namespace ExecutiveSummary.Apis
                 }
 
                 var executives = new List<Executive>();
-                List<Task<SKContext>> execTasks = new();
+                List<Task<KernelResult>> execTasks = new();
                 foreach (var p in paragraphs)
                 {
-                    execTasks.Add(sk.RunAsync(p, this.sk.Skills.GetFunction("CompanySkill", "ExecutiveList")));
+                    execTasks.Add(sk.RunAsync(p, this.sk.Functions.GetFunction("CompanyFunctions", "ExecutiveList")));
                 }
 
                 var results = await Task.WhenAll(execTasks);
@@ -93,7 +91,7 @@ namespace ExecutiveSummary.Apis
                 {
                     try
                     {
-                        var tmp = JsonSerializer.Deserialize<List<Executive>>(resp.Result);
+                        var tmp = JsonSerializer.Deserialize<List<Executive>>(resp.GetValue<string>());
                         executives.AddRange(tmp);
                     }
                     catch { }
@@ -154,11 +152,11 @@ namespace ExecutiveSummary.Apis
                 ctxVars.Set("companyName", companyName);
                 ctxVars.Set("personInfo", p);
 
-                var resp = await sk.RunAsync(ctxVars, this.sk.Skills.GetFunction("CompanySkill", "ExecutiveBios"));
+                var resp = await sk.RunAsync(ctxVars, this.sk.Functions.GetFunction("CompanyFunctions", "ExecutiveBios"));
                 try
                 {
-                    log.LogInformation($"[ExecutiveBios result]:  {resp.Result}");
-                    var strRes = resp.Result;
+                    log.LogInformation($"[ExecutiveBios result]:  {resp.GetValue<string>()}");
+                    var strRes = resp.GetValue<string>();
                     strRes = "{" + strRes.Substring(strRes.IndexOf("\"name\""));
                     var tmp = JsonSerializer.Deserialize<Executive>(strRes);
                     if (string.IsNullOrWhiteSpace(exec.Bio) && !string.IsNullOrWhiteSpace(tmp.Bio))
@@ -192,11 +190,11 @@ namespace ExecutiveSummary.Apis
                 ctxVars.Set("companyName", companyName);
                 ctxVars.Set("personInfo", p);
 
-                var resp = await sk.RunAsync(ctxVars, this.sk.Skills.GetFunction("CompanySkill", "ExecutivePriorities"));
+                var resp = await sk.RunAsync(ctxVars, this.sk.Functions.GetFunction("CompanyFunctions", "ExecutivePriorities"));
                 try
                 {
-                    log.LogInformation($"[ExecutivePriority result]:  {resp.Result}");
-                    var strRes = resp.Result;
+                    log.LogInformation($"[ExecutivePriority result]:  {resp.GetValue<string>()}");
+                    var strRes = resp.GetValue<string>();
                     strRes = "{" + strRes.Substring(strRes.IndexOf("\"name\""));
                     var tmp = JsonSerializer.Deserialize<Executive>(strRes);
                     exec.Priorities.AddRange(tmp.Priorities.Take(5));
@@ -249,15 +247,15 @@ namespace ExecutiveSummary.Apis
 
         public async Task<List<Article>> GetMeetingTopicNews(string companyName, string meetingTopic, int articleCount = 3)
         {
-            WebSearchEngineSkill bing = new(bingConn);
-            var bingMultiSkill = sk.ImportSkill(bing, "WebSearchEngineSkill");
+            WebSearchEnginePlugin bing = new(bingConn);
+            var bingMultiFunction = sk.ImportFunctions(bing, "WebSearchEngineFunction");
             var prompt = $"Find articles regarding {companyName} on the following topic: {meetingTopic}.";
             ContextVariables ctx = new ContextVariables();
             ctx.Set("input", prompt);
             ctx.Set("count", articleCount.ToString());
 
-            SKContext result = await sk.RunAsync(ctx, bingMultiSkill["Search"]);
-            var articles = result.Result.Split(',').ToList().Select(l => new Article() { Url = l }).ToList();
+            KernelResult result = await sk.RunAsync(ctx, bingMultiFunction["Search"]);
+            var articles = result.GetValue<string>().Split(',').ToList().Select(l => new Article() { Url = l }).ToList();
 
             return await GetArticleSummaries(articles);
         }
@@ -267,8 +265,8 @@ namespace ExecutiveSummary.Apis
             {
                 if (!string.IsNullOrWhiteSpace(url.Url))
                 {
-                    SKContext result = await sk.RunAsync(url.Url, this.sk.Skills.GetFunction("CompanySkill", "NewsSummary"));
-                    url.Summary = result.Result;
+                    KernelResult result = await sk.RunAsync(url.Url, this.sk.Functions.GetFunction("CompanyFunctions", "NewsSummary"));
+                    url.Summary = result.GetValue<string>();
                 }
             }
             return urls;
@@ -282,11 +280,11 @@ namespace ExecutiveSummary.Apis
             var sb = new StringBuilder();
             foreach (var paragraph in paragraphs)
             {
-                var res2 = await sk.RunAsync(paragraph, this.sk.Skills.GetFunction("CompanySkill", "10KSummary"));
-                sb.AppendLine(res2.Result);
+                var res2 = await sk.RunAsync(paragraph, this.sk.Functions.GetFunction("CompanyFunctions", "10KSummary"));
+                sb.AppendLine(res2.GetValue<string>());
             }
-            SKContext res = await sk.RunAsync(sb.ToString(), this.sk.Skills.GetFunction("CompanySkill", "10KSummary"));
-            return res.Result;
+            KernelResult res = await sk.RunAsync(sb.ToString(), this.sk.Functions.GetFunction("CompanyFunctions", "10KSummary"));
+            return res.GetValue<string>(); 
 
         }
         public async Task<string> GetQuarterlyStatementSummary(string companyName)
@@ -297,12 +295,12 @@ namespace ExecutiveSummary.Apis
             var sb = new StringBuilder();
             foreach (var paragraph in paragraphs)
             {
-                var res2 = await sk.RunAsync(paragraph, this.sk.Skills.GetFunction("CompanySkill", "QuarterlyResults"));
-                return res2.Result;
+                var res2 = await sk.RunAsync(paragraph, this.sk.Functions.GetFunction("CompanyFunctions", "QuarterlyResults"));
+                return res2.GetValue<string>();
                 //sb.AppendLine(res2.Result);
             }
-            SKContext res = await sk.RunAsync(sb.ToString(), this.sk.Skills.GetFunction("CompanySkill", "QuarterlyResults"));
-            return res.Result;
+            KernelResult res = await sk.RunAsync(sb.ToString(), this.sk.Functions.GetFunction("CompanyFunctions", "QuarterlyResults"));
+            return res.GetValue<string>();
         }
         private async Task<(List<string>, string)> GetBingResults(string prompt, int maxTokens)
         {
@@ -310,12 +308,12 @@ namespace ExecutiveSummary.Apis
             {
                 log.LogInformation($"Bing Prompt: '{prompt}'");
 
-                WebSearchEngineSkill bing = new(bingConn);
-                var bingSkill = sk.ImportSkill(bing, "WebSearchEngine");
-                var resp = await sk.RunAsync(prompt, bingSkill["Search"]);
-                var url = resp.Result;
-                var paragraphs = await GetParagraphedWebResults(url, maxTokens);
-                return (paragraphs, url);
+                WebSearchEnginePlugin bing = new(bingConn);
+                var bingPlugIn = sk.ImportFunctions(bing, "WebSearchEngine");
+                var resp = await sk.RunAsync(prompt, bingPlugIn["Search"]);
+                var url = JsonSerializer.Deserialize<dynamic>(resp.GetValue<string>());
+                var paragraphs = await GetParagraphedWebResults(url[0].ToString(), maxTokens);
+                return (paragraphs, url[0].ToString());
             }
             catch (Exception ex)
             {
