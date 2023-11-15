@@ -1,7 +1,11 @@
 Based on the information I have given you, please provide a list the executives including their name, title and company name. 
+Do not include any founders or board members, only those with current roles at the company.
 Do not generate any additional information or make assumptions beyond what I have provided.
 
-Respond in well-formatted JSON:
+Respond in only well-formatted JSON format with no additional text or commentary:
+
+Example:
+
 [
 	{
 	  "name" :"persons name",
@@ -14,6 +18,8 @@ Respond in well-formatted JSON:
 	  "companyname" :"name of company"
 	}
 ]
+
+
 +++++
 {{$INPUT}}
 +++++

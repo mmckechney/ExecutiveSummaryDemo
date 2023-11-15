@@ -18,6 +18,7 @@ namespace ExecutiveSummary.Apis
         private ILogger log;
         private ILoggerFactory loggerFactory;
         private BingUrlConnector bingConn;
+        private int maxTokens = 25000;
   
         private HttpClient _client;
         public AzureOpenAI(BingUrlConnector bingConn, IConfiguration config, ILoggerFactory loggerFactory)
@@ -42,7 +43,7 @@ namespace ExecutiveSummary.Apis
             if (azureOpenAIConfiguration != null)
             {
                 sk = new KernelBuilder()
-                   .WithAzureChatCompletionService(azureOpenAIConfiguration.DeploymentName, azureOpenAIConfiguration.Endpoint, azureOpenAIConfiguration.ApiKey, true)
+                   .WithAzureOpenAIChatCompletionService(azureOpenAIConfiguration.DeploymentName, azureOpenAIConfiguration.Endpoint, azureOpenAIConfiguration.ApiKey, true)
                     .WithLoggerFactory(loggerFactory).Build();
             }
 
@@ -53,7 +54,7 @@ namespace ExecutiveSummary.Apis
                 pluginsDir = Path.GetFullPath(Path.Combine(currentAssemblyDirectory, "Plugins"));
             }
 
-            sk.ImportSemanticFunctionsFromDirectory(pluginsDir, "SummarizeFunctions", "CompanyFunctions");
+            sk.ImportSemanticFunctionsFromDirectory(pluginsDir, null, new string[] { "SummarizeFunctions", "CompanyFunctions" });
 
             WebSearchEnginePlugin bing = new(bingConn);
             sk.ImportFunctions(bing, "WebSearchEngine");
@@ -67,7 +68,6 @@ namespace ExecutiveSummary.Apis
             {
                 List<string> paragraphs;
                 string url;
-                int maxTokens = 1000;
                 if (!companyName.IsUrl())
                 {
                     var prompt = $"Get the current list of executives for {companyName}";
@@ -139,7 +139,7 @@ namespace ExecutiveSummary.Apis
         private async Task<Executive> ExtractBioAsync(Executive exec, string companyName)
         {
             var prompt = $"Biography for {companyName} executive {exec.Name}";
-            (var paragraphs, var url) = await GetBingResults(prompt, 1000);
+            (var paragraphs, var url) = await GetBingResults(prompt, maxTokens);
             int count = 0;
             foreach (var p in paragraphs)
             {
@@ -177,7 +177,7 @@ namespace ExecutiveSummary.Apis
         private async Task<Executive> ExtractPrioritiesAsync(Executive exec, string companyName)
         {
             var prompt = $"Business priorities for {companyName} executive {exec.Name}";
-            (var paragraphs, var url) = await GetBingResults(prompt, 1000);
+            (var paragraphs, var url) = await GetBingResults(prompt, maxTokens);
             int count = 0;
             foreach (var p in paragraphs)
             {
@@ -275,7 +275,7 @@ namespace ExecutiveSummary.Apis
         {
 
             var prompt = $"site:www.sec.gov {companyName} 10K";
-            (var paragraphs, var url) = await GetBingResults(prompt, 1000);
+            (var paragraphs, var url) = await GetBingResults(prompt, maxTokens);
 
             var sb = new StringBuilder();
             foreach (var paragraph in paragraphs)
@@ -290,7 +290,7 @@ namespace ExecutiveSummary.Apis
         public async Task<string> GetQuarterlyStatementSummary(string companyName)
         {
             var prompt = $"Latest quarterly earnings report for {companyName} in {DateTime.Now.Year.ToString()}";
-            (var paragraphs, var url) = await GetBingResults(prompt, 1000);
+            (var paragraphs, var url) = await GetBingResults(prompt, maxTokens);
 
             var sb = new StringBuilder();
             foreach (var paragraph in paragraphs)
