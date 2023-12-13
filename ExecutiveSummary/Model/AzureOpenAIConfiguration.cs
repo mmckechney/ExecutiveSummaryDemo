@@ -5,7 +5,7 @@ using System.Diagnostics.CodeAnalysis;
 [SuppressMessage("Performance", "CA1812:class never instantiated", Justification = "Instantiated through IConfiguration")]
 internal sealed class AzureOpenAIConfiguration
 {
-    public string Label { get; set; }
+    public string ModelName { get; set; }
 
     public string DeploymentName { get; set; }
 
@@ -13,9 +13,9 @@ internal sealed class AzureOpenAIConfiguration
 
     public string ApiKey { get; set; }
 
-    public AzureOpenAIConfiguration(string label, string deploymentName, string endpoint, string apiKey)
+    public AzureOpenAIConfiguration(string modelName, string deploymentName, string endpoint, string apiKey)
     {
-        Label = label;
+        ModelName = modelName;
         DeploymentName = deploymentName;
         Endpoint = endpoint;
         ApiKey = apiKey;

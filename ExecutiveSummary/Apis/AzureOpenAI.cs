@@ -2,19 +2,19 @@
 using HtmlAgilityPack;
 using Microsoft.SemanticKernel.Plugins.Web;
 using Microsoft.SemanticKernel;
-using Microsoft.SemanticKernel.Orchestration;
 using Microsoft.SemanticKernel.Text;
 using System.Net;
 using System.Reflection;
 using System.Text;
 using System.Text.Json;
 
+#pragma warning disable SKEXP0055 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
 namespace ExecutiveSummary.Apis
 {
     public class AzureOpenAI
     {
         private IConfiguration _config;
-        private IKernel sk;
+        private Kernel sk;
         private ILogger log;
         private ILoggerFactory loggerFactory;
         private BingUrlConnector bingConn;
@@ -24,7 +24,6 @@ namespace ExecutiveSummary.Apis
         public AzureOpenAI(BingUrlConnector bingConn, IConfiguration config, ILoggerFactory loggerFactory)
         {
             _config = config;
-            sk = new KernelBuilder().WithLoggerFactory(loggerFactory).Build();
             log = loggerFactory.CreateLogger<AzureOpenAI>();
             this.bingConn = bingConn;
             this.loggerFactory = loggerFactory;
@@ -42,9 +41,11 @@ namespace ExecutiveSummary.Apis
             AzureOpenAIConfiguration? azureOpenAIConfiguration = _config.GetSection("AzureOpenAI:Chat").Get<AzureOpenAIConfiguration>();
             if (azureOpenAIConfiguration != null)
             {
-                sk = new KernelBuilder()
-                   .WithAzureOpenAIChatCompletionService(azureOpenAIConfiguration.DeploymentName, azureOpenAIConfiguration.Endpoint, azureOpenAIConfiguration.ApiKey, true)
-                    .WithLoggerFactory(loggerFactory).Build();
+                var builder = new KernelBuilder()
+                   .AddAzureOpenAIChatCompletion(azureOpenAIConfiguration.DeploymentName, azureOpenAIConfiguration.ModelName, azureOpenAIConfiguration.Endpoint, azureOpenAIConfiguration.ApiKey);
+                builder.Services.AddSingleton(loggerFactory);
+
+                sk = builder.Build();
             }
 
             var pluginsDir = _config["Plugins:Directory"];
@@ -54,10 +55,11 @@ namespace ExecutiveSummary.Apis
                 pluginsDir = Path.GetFullPath(Path.Combine(currentAssemblyDirectory, "Plugins"));
             }
 
-            sk.ImportSemanticFunctionsFromDirectory(pluginsDir, null, new string[] { "SummarizeFunctions", "CompanyFunctions" });
+            sk.ImportPluginFromPromptDirectory(Path.Combine(pluginsDir, "SummarizeFunctions"));
+            sk.ImportPluginFromPromptDirectory(Path.Combine(pluginsDir, "CompanyFunctions"));
 
             WebSearchEnginePlugin bing = new(bingConn);
-            sk.ImportFunctions(bing, "WebSearchEngine");
+            sk.ImportPluginFromObject(bing, "WebSearchEngine");
 
             return true;
         }
@@ -80,10 +82,10 @@ namespace ExecutiveSummary.Apis
                 }
 
                 var executives = new List<Executive>();
-                List<Task<KernelResult>> execTasks = new();
+                List<Task<FunctionResult>> execTasks = new();
                 foreach (var p in paragraphs)
                 {
-                    execTasks.Add(sk.RunAsync(p, this.sk.Functions.GetFunction("CompanyFunctions", "ExecutiveList")));
+                    execTasks.Add(sk.InvokeAsync("CompanyFunctions", "ExecutiveList", new KernelArguments(p)));
                 }
 
                 var results = await Task.WhenAll(execTasks);
@@ -147,12 +149,12 @@ namespace ExecutiveSummary.Apis
                 {
                     break;
                 }
-                var ctxVars = new ContextVariables();
-                ctxVars.Set("execName", exec.Name);
-                ctxVars.Set("companyName", companyName);
-                ctxVars.Set("personInfo", p);
+                var args = new KernelArguments();
+                args.Add("execName", exec.Name);
+                args.Add("companyName", companyName);
+                args.Add("personInfo", p);
 
-                var resp = await sk.RunAsync(ctxVars, this.sk.Functions.GetFunction("CompanyFunctions", "ExecutiveBios"));
+                var resp = await sk.InvokeAsync("CompanyFunctions", "ExecutiveBios", args);
                 try
                 {
                     log.LogInformation($"[ExecutiveBios result]:  {resp.GetValue<string>()}");
@@ -185,12 +187,12 @@ namespace ExecutiveSummary.Apis
                 {
                     break;
                 }
-                var ctxVars = new ContextVariables();
-                ctxVars.Set("execName", exec.Name);
-                ctxVars.Set("companyName", companyName);
-                ctxVars.Set("personInfo", p);
+                var args = new KernelArguments();
+                args.Add("execName", exec.Name);
+                args.Add("companyName", companyName);
+                args.Add("personInfo", p);
 
-                var resp = await sk.RunAsync(ctxVars, this.sk.Functions.GetFunction("CompanyFunctions", "ExecutivePriorities"));
+                var resp = await sk.InvokeAsync("CompanyFunctions", "ExecutivePriorities", args);
                 try
                 {
                     log.LogInformation($"[ExecutivePriority result]:  {resp.GetValue<string>()}");
@@ -247,14 +249,12 @@ namespace ExecutiveSummary.Apis
 
         public async Task<List<Article>> GetMeetingTopicNews(string companyName, string meetingTopic, int articleCount = 3)
         {
-            WebSearchEnginePlugin bing = new(bingConn);
-            var bingMultiFunction = sk.ImportFunctions(bing, "WebSearchEngineFunction");
             var prompt = $"Find articles regarding {companyName} on the following topic: {meetingTopic}.";
-            ContextVariables ctx = new ContextVariables();
-            ctx.Set("input", prompt);
-            ctx.Set("count", articleCount.ToString());
+            var args = new KernelArguments();
+            args.Add("input", prompt);
+            args.Add("count", articleCount.ToString());
 
-            KernelResult result = await sk.RunAsync(ctx, bingMultiFunction["Search"]);
+            var result = await sk.InvokeAsync("WebSearchEngine", "Search", args);
             var articles = result.GetValue<string>().Split(',').ToList().Select(l => new Article() { Url = l }).ToList();
 
             return await GetArticleSummaries(articles);
@@ -265,7 +265,7 @@ namespace ExecutiveSummary.Apis
             {
                 if (!string.IsNullOrWhiteSpace(url.Url))
                 {
-                    KernelResult result = await sk.RunAsync(url.Url, this.sk.Functions.GetFunction("CompanyFunctions", "NewsSummary"));
+                    var result = await sk.InvokeAsync("CompanyFunctions", "NewsSummary", new KernelArguments(url.Url));
                     url.Summary = result.GetValue<string>();
                 }
             }
@@ -280,10 +280,10 @@ namespace ExecutiveSummary.Apis
             var sb = new StringBuilder();
             foreach (var paragraph in paragraphs)
             {
-                var res2 = await sk.RunAsync(paragraph, this.sk.Functions.GetFunction("CompanyFunctions", "10KSummary"));
+                var res2 = await sk.InvokeAsync("CompanyFunctions", "10KSummary", new KernelArguments(paragraph));
                 sb.AppendLine(res2.GetValue<string>());
             }
-            KernelResult res = await sk.RunAsync(sb.ToString(), this.sk.Functions.GetFunction("CompanyFunctions", "10KSummary"));
+            var res = await sk.InvokeAsync("CompanyFunctions", "10KSummary", new KernelArguments(sb.ToString()));
             return res.GetValue<string>(); 
 
         }
@@ -295,11 +295,10 @@ namespace ExecutiveSummary.Apis
             var sb = new StringBuilder();
             foreach (var paragraph in paragraphs)
             {
-                var res2 = await sk.RunAsync(paragraph, this.sk.Functions.GetFunction("CompanyFunctions", "QuarterlyResults"));
+                var res2 = await sk.InvokeAsync("CompanyFunctions", "QuarterlyResults", new KernelArguments(paragraph));
                 return res2.GetValue<string>();
-                //sb.AppendLine(res2.Result);
             }
-            KernelResult res = await sk.RunAsync(sb.ToString(), this.sk.Functions.GetFunction("CompanyFunctions", "QuarterlyResults"));
+            var res = await sk.InvokeAsync("CompanyFunctions", "QuarterlyResults", new KernelArguments(sb.ToString()));
             return res.GetValue<string>();
         }
         private async Task<(List<string>, string)> GetBingResults(string prompt, int maxTokens)
@@ -308,9 +307,7 @@ namespace ExecutiveSummary.Apis
             {
                 log.LogInformation($"Bing Prompt: '{prompt}'");
 
-                WebSearchEnginePlugin bing = new(bingConn);
-                var bingPlugIn = sk.ImportFunctions(bing, "WebSearchEngine");
-                var resp = await sk.RunAsync(prompt, bingPlugIn["Search"]);
+                var resp = await sk.InvokeAsync("WebSearchEngine","Search", new KernelArguments(prompt));
                 var url = JsonSerializer.Deserialize<dynamic>(resp.GetValue<string>());
                 var paragraphs = await GetParagraphedWebResults(url[0].ToString(), maxTokens);
                 return (paragraphs, url[0].ToString());
@@ -351,23 +348,13 @@ namespace ExecutiveSummary.Apis
                     if (!string.IsNullOrWhiteSpace(t))
                         trimmed.Add(t);
                 });
-                // log.LogInformation($"Trimmed Web Result: {trimmed}");
 
                 var paragraphs = TextChunker.SplitPlainTextParagraphs(trimmed, maxTokens);
 
-                //if (log.IsEnabled(LogLevel.Information))
-                //{
-                //    log.LogInformation("Extracted Split Text:");
-                //    for (int i = 0; i < paragraphs.Count; i++)
-                //    {
-                //        log.LogInformation($"[{i}]:  {paragraphs[i]}");
-                //    }
-                //}
                 return paragraphs;
             }
-            catch (Exception exe)
+            catch (Exception)
             {
-                //log.LogError(exe, $"Failed to chunk text: {exe.Message}");
                 return new List<string>();
             }
         }
