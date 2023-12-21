@@ -48,7 +48,7 @@ namespace ExecutiveSummary.Apis
             });
 
 
-            return urls.Select(u => u.Url).ToList() ?? new List<string>();
+            return urls.Select(u => $"{u.Name}|{u.Url}").ToList() ?? new List<string>();
         }
 
         protected virtual void Dispose(bool disposing)

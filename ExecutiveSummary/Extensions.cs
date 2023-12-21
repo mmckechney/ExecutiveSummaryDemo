@@ -41,7 +41,7 @@ namespace ExecutiveSummary
         {
             value = value.WithLinks().ToString();
             var titles = new List<string> { "Business Priorities:", "References:", "Bio:", "Key Insights:", "Summary for quarterly report:", "Summary for 10K:",
-                        "Title:", "Article Summary:", "Article Insights:"};
+                        "Title:", "Article Summary:", "Article Insights:","Page URL:"};
             foreach (var title in titles)
             {
                 value = value.Replace(title, $"</br><b>{title}</b></br>");

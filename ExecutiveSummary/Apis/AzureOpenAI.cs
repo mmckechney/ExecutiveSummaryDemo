@@ -41,8 +41,11 @@ namespace ExecutiveSummary.Apis
             AzureOpenAIConfiguration? azureOpenAIConfiguration = _config.GetSection("AzureOpenAI:Chat").Get<AzureOpenAIConfiguration>();
             if (azureOpenAIConfiguration != null)
             {
-                var builder = new KernelBuilder()
-                   .AddAzureOpenAIChatCompletion(azureOpenAIConfiguration.DeploymentName, azureOpenAIConfiguration.ModelName, azureOpenAIConfiguration.Endpoint, azureOpenAIConfiguration.ApiKey);
+                var builder = Kernel.CreateBuilder()
+                   .AddAzureOpenAIChatCompletion(deploymentName: azureOpenAIConfiguration.DeploymentName,
+                       endpoint: azureOpenAIConfiguration.Endpoint, 
+                       apiKey: azureOpenAIConfiguration.ApiKey,
+                       modelId: azureOpenAIConfiguration.ModelName);
                 builder.Services.AddSingleton(loggerFactory);
 
                 sk = builder.Build();
@@ -84,10 +87,9 @@ namespace ExecutiveSummary.Apis
                 var executives = new List<Executive>();
                 List<Task<FunctionResult>> execTasks = new();
                 foreach (var p in paragraphs)
-                {
-                    execTasks.Add(sk.InvokeAsync("CompanyFunctions", "ExecutiveList", new KernelArguments(p)));
+                { 
+                    execTasks.Add(sk.InvokeAsync("CompanyFunctions", "ExecutiveList", new KernelArguments(new Dictionary<string,object?>(){ { "input", p } })));
                 }
-
                 var results = await Task.WhenAll(execTasks);
                 foreach (var resp in results)
                 {
@@ -251,25 +253,41 @@ namespace ExecutiveSummary.Apis
         {
             var prompt = $"Find articles regarding {companyName} on the following topic: {meetingTopic}.";
             var args = new KernelArguments();
-            args.Add("input", prompt);
+            args.Add("query", prompt);
             args.Add("count", articleCount.ToString());
 
             var result = await sk.InvokeAsync("WebSearchEngine", "Search", args);
-            var articles = result.GetValue<string>().Split(',').ToList().Select(l => new Article() { Url = l }).ToList();
+            var lst = JsonSerializer.Deserialize<List<string>>(result.GetValue<string>());
+
+            var articles = lst.Select(l => new Article() { Url = l.Split('|')[1], Title = l.Split('|')[0] }).ToList();
 
             return await GetArticleSummaries(articles);
         }
         public async Task<List<Article>> GetArticleSummaries(List<Article> urls)
         {
+            List<Task<FunctionResult>> tasks = new();
             foreach (var url in urls)
             {
                 if (!string.IsNullOrWhiteSpace(url.Url))
                 {
-                    var result = await sk.InvokeAsync("CompanyFunctions", "NewsSummary", new KernelArguments(url.Url));
-                    url.Summary = result.GetValue<string>();
+                    tasks.Add(sk.InvokeAsync("CompanyFunctions", "NewsSummary", new KernelArguments(new Dictionary<string, object?>() { { "input", url.Url }, { "pageUrl", url.Url } })));
+                    //url.Summary = result.GetValue<string>();
                 }
             }
-            return urls;
+            var results = await Task.WhenAll(tasks);
+
+            var summaries = new List<Article>();
+
+            foreach(var res in results)
+            {
+                summaries.Add(new Article() { Summary = res.GetValue<string>() });
+                //var url = urls.FirstOrDefault(u => res.GetValue<string>().ToLower().Contains(u.Title.Substring(0,u.Title.Length - 30).ToLower()));
+                //if (url != null)
+                //{
+                //    url.Summary = res.GetValue<string>();
+                //}
+            }
+            return summaries;
         }
         public async Task<string> Get10KInsights(string companyName)
         {
@@ -280,10 +298,10 @@ namespace ExecutiveSummary.Apis
             var sb = new StringBuilder();
             foreach (var paragraph in paragraphs)
             {
-                var res2 = await sk.InvokeAsync("CompanyFunctions", "10KSummary", new KernelArguments(paragraph));
+                var res2 = await sk.InvokeAsync("CompanyFunctions", "10KSummary", new KernelArguments(new Dictionary<string, object?>() { { "input", paragraph } }));
                 sb.AppendLine(res2.GetValue<string>());
             }
-            var res = await sk.InvokeAsync("CompanyFunctions", "10KSummary", new KernelArguments(sb.ToString()));
+            var res = await sk.InvokeAsync("CompanyFunctions", "10KSummary", new KernelArguments(new Dictionary<string, object?>() { { "input", sb.ToString() } }));
             return res.GetValue<string>(); 
 
         }
@@ -295,10 +313,10 @@ namespace ExecutiveSummary.Apis
             var sb = new StringBuilder();
             foreach (var paragraph in paragraphs)
             {
-                var res2 = await sk.InvokeAsync("CompanyFunctions", "QuarterlyResults", new KernelArguments(paragraph));
+                var res2 = await sk.InvokeAsync("CompanyFunctions", "QuarterlyResults", new KernelArguments(new Dictionary<string, object?>() { { "input", paragraph } }));
                 return res2.GetValue<string>();
             }
-            var res = await sk.InvokeAsync("CompanyFunctions", "QuarterlyResults", new KernelArguments(sb.ToString()));
+            var res = await sk.InvokeAsync("CompanyFunctions", "QuarterlyResults", new KernelArguments(new Dictionary<string, object?>() { { "input", sb.ToString() } }));
             return res.GetValue<string>();
         }
         private async Task<(List<string>, string)> GetBingResults(string prompt, int maxTokens)
@@ -307,10 +325,11 @@ namespace ExecutiveSummary.Apis
             {
                 log.LogInformation($"Bing Prompt: '{prompt}'");
 
-                var resp = await sk.InvokeAsync("WebSearchEngine","Search", new KernelArguments(prompt));
-                var url = JsonSerializer.Deserialize<dynamic>(resp.GetValue<string>());
-                var paragraphs = await GetParagraphedWebResults(url[0].ToString(), maxTokens);
-                return (paragraphs, url[0].ToString());
+                var resp = await sk.InvokeAsync("WebSearchEngine","Search", new KernelArguments(new Dictionary<string, object?>() { { "query", prompt } }));
+                var lst = JsonSerializer.Deserialize<List<string>>(resp.GetValue<string>());
+                var url = lst[0].Split('|')[1];
+                var paragraphs = await GetParagraphedWebResults(url, maxTokens);
+                return (paragraphs, url);
             }
             catch (Exception ex)
             {

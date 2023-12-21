@@ -99,7 +99,7 @@
 @*    <h2 class="alert alert-secondary" role="alert">10K Insights</h2>
     <div> @insights10K.AddLinksAndTitles()</div>*@
 
-    @if(articles.Count > 0 && articles[0].Url != string.Empty)
+    @if(articles.Count > 0)// && articles[0].Url != string.Empty)
     {
         <h2 class="alert alert-secondary" role="alert">Article Insights</h2>
         @foreach(var article in articles)

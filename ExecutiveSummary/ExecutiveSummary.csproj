@@ -8,20 +8,19 @@
 		<DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
 	</PropertyGroup>
 	<ItemGroup>
-		<PackageReference Include="HtmlAgilityPack" Version="1.11.54" />
+		<PackageReference Include="HtmlAgilityPack" Version="1.11.56" />
 		<PackageReference Include="HtmlRenderer.Core.NetStandard2" Version="1.5.1.2" />
 		<PackageReference Include="Microsoft.Identity.Web" Version="2.16.0" />
 		<PackageReference Include="Microsoft.Identity.Web.UI" Version="2.16.0" />
-		<PackageReference Include="Microsoft.SemanticKernel" Version="1.0.0-rc3" />
-		<PackageReference Include="Microsoft.SemanticKernel.Abstractions" Version="1.0.0-rc3" />
-		<PackageReference Include="Microsoft.SemanticKernel.Core" Version="1.0.0-rc3" />
-		<PackageReference Include="Microsoft.SemanticKernel.Plugins.Core" Version="1.0.0-rc3" />
-		<PackageReference Include="Microsoft.SemanticKernel.Plugins.Document" Version="1.0.0-rc3" />
-		<PackageReference Include="Microsoft.SemanticKernel.Plugins.Memory" Version="1.0.0-rc3" />
-		<PackageReference Include="Microsoft.SemanticKernel.Plugins.MsGraph" Version="1.0.0-rc3" />
-		<PackageReference Include="Microsoft.SemanticKernel.Plugins.Web" Version="1.0.0-rc3" />
+		<PackageReference Include="Microsoft.SemanticKernel" Version="1.0.1" />
+		<PackageReference Include="Microsoft.SemanticKernel.Abstractions" Version="1.0.1" />
+		<PackageReference Include="Microsoft.SemanticKernel.Core" Version="1.0.1" />
+		<PackageReference Include="Microsoft.SemanticKernel.Plugins.Core" Version="1.0.1-alpha" />
+		<PackageReference Include="Microsoft.SemanticKernel.Plugins.Document" Version="1.0.1-alpha" />
+		<PackageReference Include="Microsoft.SemanticKernel.Plugins.Memory" Version="1.0.1-alpha" />
+		<PackageReference Include="Microsoft.SemanticKernel.Plugins.MsGraph" Version="1.0.1-alpha" />
+		<PackageReference Include="Microsoft.SemanticKernel.Plugins.Web" Version="1.0.1-alpha" />
 		<PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.19.5" />
-		<PackageReference Include="SecuritiesExchangeCommission.Edgar" Version="6.3.2" />
 	</ItemGroup>
 	<ItemGroup>
 		<Content Update="local.settings.json">
