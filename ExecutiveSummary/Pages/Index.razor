@@ -46,8 +46,11 @@
             }
         </tbody>
     </table>
-    <div>Source: @executiveSource.AddLinksAndTitles()</div>
-        
+    <div>Source: @foreach(var sources in executiveSource)
+      {
+         <div>@sources.AddLinksAndTitles()</div>
+      }
+    </div>
     </div>
 <div hidden="@hideRetrieveButton">
 <div>
@@ -115,17 +118,17 @@
 
 @code {
 
-    [Parameter]
-    public string companyName { get; set; } = string.Empty;
-    [Parameter]
-    public string meetingTopic { get; set; } = string.Empty;
+   [Parameter]
+   public string companyName { get; set; } = string.Empty;
+   [Parameter]
+   public string meetingTopic { get; set; } = string.Empty;
 
-    [Parameter]
-    public List<Article> articles { get; set; } = new List<Article>();
+   [Parameter]
+   public List<Article> articles { get; set; } = new List<Article>();
 
-    public List<Executive> executives { get; set; } = new List<Executive>();
-    public string executiveSource { get; set; } = string.Empty;
-    public string quarterlySummary { get; set; } = string.Empty;
+   public List<Executive> executives { get; set; } = new List<Executive>();
+   public List<string> executiveSource { get; set; } = new();
+   public string quarterlySummary { get; set; } = string.Empty;
     public string insights10K { get; set; } = string.Empty;
     public string generateStatus { get; set; } = string.Empty;
 

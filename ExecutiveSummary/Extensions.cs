@@ -49,5 +49,12 @@ namespace ExecutiveSummary
             return (MarkupString)value;
 
         }
+
+      public static string RemoveJsonDecoration(this string value)
+      {
+         value = value.Replace("```json", "");
+         value = value.Replace("```", "");
+         return value;
+      }
     }
 }

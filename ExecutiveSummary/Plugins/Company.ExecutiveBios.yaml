@@ -1,0 +1,40 @@
+﻿name: ExecutiveBios
+description: Summaries business biographies of people mentioned in the text
+template: |
+  <message role="system"> Based on the information I have given you, create and summarize the biography for the {{companyName}} executive {{execName}}.
+  Also include up to two references links.
+  Do not generate any additional information or make assumptions beyond what I have provided.
+  Respond in only well-formatted JSON format with no additional text or commentary
+  Only return a valid JSON string that can be directly serialized into a C# object
+  Return the entire result only in well-formatted JSON as per example:
+  {
+   name" : "{{execName}}",
+   "biography": "text",
+   "references": [
+      "url1",
+      "url2"
+   ]
+  }
+  </message>
+
+  <message role="user">{{personInfo}}</message
+  <message role="system">JSON Response: </message>
+template_format: handlebars
+input_variables: 
+ - name: companyName
+   description: The name of the company
+   is_required: true
+ - name: execName
+   description: The name of the executive
+   is_required: true
+ - name: personInfo
+   description: The information about the executive
+   is_required: true
+execution_settings:
+  default: 
+    max_tokens: 1000
+    temperature: 0.0
+  gpt-4:
+    model_id: gpt-4-1106-preview
+    max_tokens: 1000
+    temperature: 0.0

@@ -1,0 +1,42 @@
+﻿name: ExecutiveList
+description: Extract list of company executives from text
+template: |
+  <message role="system">Based on the information I have given you, please provide a list the executives for {{companyName}} including their name, title. 
+  Do not include any founders or board members, only those with current roles at the company.
+  Do not generate any additional information or make assumptions beyond what I have provided.
+  Respond in only well-formatted JSON format with no additional text or commentary
+  Do not add any additional comment or symbols that would make the reponse anything but valid JSON that can be directly serialized into a C# object
+
+  JSON Example:
+
+   [
+      {
+         "name" :"persons name",
+         "title" : "business title",
+         "companyname" :"{{companyName}}"
+      },
+      {
+         "name" :"persons name",
+         "title" : "business title",
+         "companyname" :"{{companyName}}"
+      }
+   ]
+   </message>
+   <message role="user">{{input}}</message>
+   <message role="system">JSON Response: </message>
+template_format: handlebars
+input_variables: 
+ - name: input
+   description: Text that contains information on company executives
+   is_required: true
+ - name: companyName
+   description: Name of the company to extract executives for
+   is_required: true
+execution_settings:
+  default: 
+    max_tokens: 1000
+    temperature: 0.0
+  gpt-4:
+    model_id: gpt-4-1106-preview
+    max_tokens: 1000
+    temperature: 0.0

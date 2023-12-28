@@ -20,6 +20,8 @@
 		<PackageReference Include="Microsoft.SemanticKernel.Plugins.Memory" Version="1.0.1-alpha" />
 		<PackageReference Include="Microsoft.SemanticKernel.Plugins.MsGraph" Version="1.0.1-alpha" />
 		<PackageReference Include="Microsoft.SemanticKernel.Plugins.Web" Version="1.0.1-alpha" />
+		<PackageReference Include="Microsoft.SemanticKernel.PromptTemplates.Handlebars" Version="1.0.1" />
+		<PackageReference Include="Microsoft.SemanticKernel.Yaml" Version="1.0.1" />
 		<PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.19.5" />
 	</ItemGroup>
 	<ItemGroup>
@@ -34,6 +36,12 @@
 			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
 		</Content>
 	</ItemGroup>
+   <ItemGroup>
+      <EmbeddedResource Include="Plugins\**\*.yaml" />
+   </ItemGroup>
+   <ItemGroup>
+     <None Remove="Plugins\Company.ExecutivePriorities.yaml" />
+   </ItemGroup>
 	<ItemGroup>
 	  <None Include="..\.editorconfig" Link=".editorconfig" />
 	</ItemGroup>
