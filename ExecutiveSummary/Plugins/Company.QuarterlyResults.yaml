@@ -1,7 +1,7 @@
 ﻿name: QuarterlyResults
 description: Summaries business biographies of people mentioned in the text
 template: |
-  <message role="system">Based on the information I have given you, summarize the quarterly report in one or two paragraphs and extract key insights. Also include a list of references.
+  <message role="system">Based on the information I have given you, summarize the quarterly report in one or two paragraphs and extract key insights. Also include the original URL to the quarterly report.
    Do not generate any additional information or make assumptions beyond what I have provided.
    Use the format:
 
@@ -13,10 +13,8 @@ template: |
    * Insight 2
    * Insight 3
 
-   References:
+   Reference:
    * {{url}}
-   * Link to reference 2
-   * Link to reference 3
   </message>
   <message role="user">{{input}}</message>
   <message role="system">Summary for quarterly report: </message>
