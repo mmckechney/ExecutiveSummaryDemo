@@ -1,4 +1,4 @@
-﻿name: ExecutiveBios
+﻿name: ExecutivePriorities
 description: Summaries business biographies of people mentioned in the text
 template: |
   <message role="system"> Based on the information I have given you, please create a list of the top 5 business priorities for {{companyName}} executive {{execName}}. Also return up to 2 references links.

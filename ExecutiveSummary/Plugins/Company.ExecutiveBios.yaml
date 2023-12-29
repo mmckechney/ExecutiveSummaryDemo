@@ -17,7 +17,7 @@ template: |
   }
   </message>
 
-  <message role="user">{{personInfo}}</message
+  <message role="user">{{personInfo}}</message>
   <message role="system">JSON Response: </message>
 template_format: handlebars
 input_variables: 

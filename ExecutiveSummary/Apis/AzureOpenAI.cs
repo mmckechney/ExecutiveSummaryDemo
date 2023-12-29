@@ -33,12 +33,13 @@ namespace ExecutiveSummary.Apis
          log = loggerFactory.CreateLogger<AzureOpenAI>();
          this.bingConn = bingConn;
          this.loggerFactory = loggerFactory;
-         InitPlugins();
          InitYamlPrompts();
       }
 
-      private bool InitPlugins()
+
+      private void InitYamlPrompts()
       {
+
          HttpClientHandler handler = new HttpClientHandler()
          {
             AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate
@@ -58,26 +59,9 @@ namespace ExecutiveSummary.Apis
             sk = builder.Build();
          }
 
-         var pluginsDir = _config["Plugins:Directory"];
-         if (pluginsDir == null)
-         {
-            string currentAssemblyDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-            pluginsDir = Path.GetFullPath(Path.Combine(currentAssemblyDirectory, "Plugins"));
-         }
-
-
-
-         sk.ImportPluginFromPromptDirectory(Path.Combine(pluginsDir, "SummarizeFunctions"));
-         sk.ImportPluginFromPromptDirectory(Path.Combine(pluginsDir, "CompanyFunctions"));
-
-
          WebSearchEnginePlugin bing = new(bingConn);
          sk.ImportPluginFromObject(bing, "WebSearchEngine");
 
-         return true;
-      }
-      private void InitYamlPrompts()
-      {
          var assembly = Assembly.GetExecutingAssembly();
          var resources = assembly.GetManifestResourceNames().ToList();
          resources.ForEach(r =>
@@ -103,7 +87,7 @@ namespace ExecutiveSummary.Apis
             if (!companyName.IsUrl())
             {
                var prompt = $"Who are the current executives for {companyName}";
-               (paragraphs, urls) = await GetBingResults(prompt, maxTokens);
+               (paragraphs, urls) = await GetBingResults(prompt, maxTokens, 3);
             }
             else
             {
@@ -171,7 +155,7 @@ namespace ExecutiveSummary.Apis
       private async Task<Executive> ExtractBioAsync(Executive exec, string companyName)
       {
          var prompt = $"Biography for {companyName} executive {exec.Name}";
-         (var paragraphs, var urls) = await GetBingResults(prompt, maxTokens);
+         (var paragraphs, var urls) = await GetBingResults(prompt, maxTokens, 3);
          int count = 0;
          foreach (var p in paragraphs)
          {
@@ -204,7 +188,7 @@ namespace ExecutiveSummary.Apis
       private async Task<Executive> ExtractPrioritiesAsync(Executive exec, string companyName)
       {
          var prompt = $"Business priorities for {companyName} executive {exec.Name}";
-         (var paragraphs, var urls) = await GetBingResults(prompt, maxTokens);
+         (var paragraphs, var urls) = await GetBingResults(prompt, maxTokens, 3);
          int count = 0;
          foreach (var p in paragraphs)
          {
@@ -288,8 +272,7 @@ namespace ExecutiveSummary.Apis
          {
             if (!string.IsNullOrWhiteSpace(url.Url))
             {
-               tasks.Add(sk.InvokeAsync("CompanyFunctions", "NewsSummary", new KernelArguments(new Dictionary<string, object?>() { { "input", url.Url }, { "pageUrl", url.Url } })));
-               //url.Summary = result.GetValue<string>();
+               tasks.Add(sk.InvokeAsync(yamlPrompts["Company.NewsSummary"], new() { { "input", url.Url }, { "pageUrl", url.Url } }));
             }
          }
          var results = await Task.WhenAll(tasks);
@@ -298,52 +281,31 @@ namespace ExecutiveSummary.Apis
 
          foreach (var res in results)
          {
-            summaries.Add(new Article() { Summary = res.GetValue<string>() });
-            //var url = urls.FirstOrDefault(u => res.GetValue<string>().ToLower().Contains(u.Title.Substring(0,u.Title.Length - 30).ToLower()));
-            //if (url != null)
-            //{
-            //    url.Summary = res.GetValue<string>();
-            //}
+            summaries.Add(new Article() { Summary = res?.GetValue<string>() });
          }
          return summaries;
       }
-      public async Task<string> Get10KInsights(string companyName)
+       public async Task<string> GetQuarterlyStatementSummary(string companyName)
       {
-
-         var prompt = $"site:www.sec.gov {companyName} 10K";
-         (var paragraphs, var url) = await GetBingResults(prompt, maxTokens);
+         var prompt = $"What is the latest quarterly earnings report for {companyName} in {DateTime.Now.Year.ToString()}";
+         (var paragraphs, var url) = await GetBingResults(prompt, maxTokens, 3);
 
          var sb = new StringBuilder();
          foreach (var paragraph in paragraphs)
          {
-            var res2 = await sk.InvokeAsync("CompanyFunctions", "10KSummary", new KernelArguments(new Dictionary<string, object?>() { { "input", paragraph } }));
-            sb.AppendLine(res2.GetValue<string>());
-         }
-         var res = await sk.InvokeAsync("CompanyFunctions", "10KSummary", new KernelArguments(new Dictionary<string, object?>() { { "input", sb.ToString() } }));
-         return res.GetValue<string>();
-
-      }
-      public async Task<string> GetQuarterlyStatementSummary(string companyName)
-      {
-         var prompt = $"Latest quarterly earnings report for {companyName} in {DateTime.Now.Year.ToString()}";
-         (var paragraphs, var url) = await GetBingResults(prompt, maxTokens);
-
-         var sb = new StringBuilder();
-         foreach (var paragraph in paragraphs)
-         {
-            var res2 = await sk.InvokeAsync("CompanyFunctions", "QuarterlyResults", new KernelArguments(new Dictionary<string, object?>() { { "input", paragraph } }));
+            var res2 = await sk.InvokeAsync(yamlPrompts["Company.QuarterlyResults"], new() { { "input", paragraph } });
             return res2.GetValue<string>();
          }
-         var res = await sk.InvokeAsync("CompanyFunctions", "QuarterlyResults", new KernelArguments(new Dictionary<string, object?>() { { "input", sb.ToString() } }));
+         var res = await sk.InvokeAsync(yamlPrompts["Company.QuarterlyResults"], new() { { "input", sb.ToString() } });
          return res.GetValue<string>();
       }
-      private async Task<(List<string>, List<string>)> GetBingResults(string prompt, int maxTokens)
+      private async Task<(List<string>, List<string>)> GetBingResults(string prompt, int maxTokens, int resultCount = 5)
       {
          try
          {
             log.LogInformation($"Bing Prompt: '{prompt}'");
 
-            var resp = await sk.InvokeAsync("WebSearchEngine", "Search", new() { { "query", prompt }, { "count", 5 } });
+            var resp = await sk.InvokeAsync("WebSearchEngine", "Search", new() { { "query", prompt }, { "count", resultCount } });
             var lst = JsonSerializer.Deserialize<List<string>>(resp.GetValue<string>());
 
             var urls = lst.Select(l => urlRegex.Match(l).Value).ToList();
