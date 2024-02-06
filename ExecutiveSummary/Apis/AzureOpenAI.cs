@@ -86,7 +86,7 @@ namespace ExecutiveSummary.Apis
             List<string> urls;
             if (!companyName.IsUrl())
             {
-               var prompt = $"Who are the current executives for {companyName}";
+               var prompt = $"List of the current executives for {companyName}";
                (paragraphs, urls) = await GetBingResults(prompt, maxTokens, 3);
             }
             else
