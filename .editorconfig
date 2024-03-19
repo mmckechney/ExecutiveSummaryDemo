@@ -2,3 +2,9 @@
 
 # SKEXP0054: Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
 dotnet_diagnostic.SKEXP0054.severity = warning
+
+dotnet_diagnostic.SKEXP0003.severity = warning
+dotnet_diagnostic.SKEXP0001.severity = warning
+dotnet_diagnostic.SKEXP0020.severity = warning
+dotnet_diagnostic.SKEXP0010.severity = warning
+dotnet_diagnostic.SKEXP0050.severity = warning
