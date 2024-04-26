@@ -7,9 +7,7 @@ using System.Net;
 using System.Reflection;
 using System.Text;
 using System.Text.Json;
-using Humanizer.Localisation;
 using Microsoft.SemanticKernel.PromptTemplates.Handlebars;
-using static Microsoft.Graph.Constants;
 using System.Text.RegularExpressions;
 
 #pragma warning disable SKEXP0055 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
