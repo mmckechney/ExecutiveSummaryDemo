@@ -25,33 +25,33 @@ namespace ExecutiveSummary.Apis
 
         }
 
-        /// <inheritdoc/>
-        public virtual async Task<IEnumerable<string>> SearchAsync(string query, int count = 1, int offset = 0, CancellationToken cancellationToken = default)
-        {
-            string freshnessFilter = $"{DateTime.Now.AddYears(-1).ToString("yyyy-MM-dd")}..{DateTime.Now.ToString("yyyy-MM-dd")}";
-            Uri uri = new($"https://api.bing.microsoft.com/v7.0/search?q={Uri.EscapeDataString(query)}&count={count}&freshness={freshnessFilter}&responseFilter=Webpages");
+      /// <inheritdoc/>
+      public virtual async Task<IEnumerable<T>> SearchAsync<T>(string query, int count = 1, int offset = 0, CancellationToken cancellationToken = default)
+      {
+         string freshnessFilter = $"{DateTime.Now.AddYears(-1).ToString("yyyy-MM-dd")}..{DateTime.Now.ToString("yyyy-MM-dd")}";
+         Uri uri = new($"https://api.bing.microsoft.com/v7.0/search?q={Uri.EscapeDataString(query)}&count={count}&freshness={freshnessFilter}&responseFilter=Webpages");
 
-            _logger.LogDebug("Sending request: {0}", uri);
-            HttpResponseMessage response = await _httpClient.GetAsync(uri, cancellationToken);
-            response.EnsureSuccessStatusCode();
-            _logger.LogDebug("Response received: {0}", response.StatusCode);
+         _logger.LogDebug("Sending request: {0}", uri);
+         HttpResponseMessage response = await _httpClient.GetAsync(uri, cancellationToken);
+         response.EnsureSuccessStatusCode();
+         _logger.LogDebug("Response received: {0}", response.StatusCode);
 
-            string json = await response.Content.ReadAsStringAsync();
-            _logger.LogTrace("Response content received: {0}", json);
+         string json = await response.Content.ReadAsStringAsync();
+         _logger.LogTrace("Response content received: {0}", json);
 
-            BingSearchResponse? data = JsonSerializer.Deserialize<BingSearchResponse>(json);
-            var urls = data?.WebPages?.Value?.Take(count).ToList();
+         BingSearchResponse? data = JsonSerializer.Deserialize<BingSearchResponse>(json);
+         var urls = data?.WebPages?.Value?.Take(count).ToList();
 
-            urls.ForEach(u =>
-            {
-                _logger.LogInformation($"Result: {u.Name}, {u.Url}, {u.Snippet}");
-            });
+         urls.ForEach(u =>
+         {
+            _logger.LogInformation($"Result: {u.Name}, {u.Url}, {u.Snippet}");
+         });
 
+         IEnumerable<T> result = urls.Select(u => $"{u.Name}|{u.Url}") as IEnumerable<T>;
+         return result;
+      }
 
-            return urls.Select(u => $"{u.Name}|{u.Url}").ToList() ?? new List<string>();
-        }
-
-        protected virtual void Dispose(bool disposing)
+      protected virtual void Dispose(bool disposing)
         {
             if (disposing)
             {
@@ -67,7 +67,7 @@ namespace ExecutiveSummary.Apis
             GC.SuppressFinalize(this);
         }
 
-        [SuppressMessage("Performance", "CA1812:Internal class that is apparently never instantiated",
+       [SuppressMessage("Performance", "CA1812:Internal class that is apparently never instantiated",
             Justification = "Class is instantiated through deserialization.")]
         internal sealed class BingSearchResponse
         {
